@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# Must disable TensorFlow v2 behavior before any imports
+import sys
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+# Make sure all imports of 'tensorflow' get the compat.v1 version
+sys.modules['tensorflow'] = tf
+
 import functools
 import os
 
@@ -12,6 +19,7 @@ from policies.cnn_policy_param_matched import CnnPolicy
 from ppo_agent import PpoAgent
 from utils import set_global_seeds
 from vec_env import VecFrameStack
+from gym.wrappers import FlattenObservation
 
 
 def train(*, env_id, num_env, hps, num_timesteps, seed):

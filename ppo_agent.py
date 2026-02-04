@@ -4,7 +4,8 @@ from copy import copy
 
 import numpy as np
 import psutil
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from mpi4py import MPI
 from baselines import logger
 import tf_util
@@ -188,11 +189,11 @@ class PpoAgent(object):
                            "maxfeat", "gradnorm"]
         self.I = None
         self.disable_policy_update = None
-        allvars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.abs_scope)
+        allvars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope=self.abs_scope)
         if self.is_log_leader:
             tf_util.display_var_info(allvars)
-        tf.get_default_session().run(tf.variables_initializer(allvars))
-        sync_from_root(tf.get_default_session(), allvars) #Syncs initialization across mpi workers.
+        tf.compat.v1.get_default_session().run(tf.compat.v1.variables_initializer(allvars))
+        sync_from_root(tf.compat.v1.get_default_session(), allvars) #Syncs initialization across mpi workers.
         self.t0 = time.time()
         self.global_tcount = 0
 

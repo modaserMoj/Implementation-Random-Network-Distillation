@@ -1,10 +1,12 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from baselines import logger
 from utils import fc, conv
 from stochastic_policy import StochasticPolicy
 from tf_util import get_available_gpus
 from mpi_util import RunningMeanStd
+KerasGRUCell = tf.keras.layers.GRUCell
 
 
 def to2d(x):
@@ -14,31 +16,17 @@ def to2d(x):
 
 
 
-class GRUCell(tf.nn.rnn_cell.RNNCell):
-    """Gated Recurrent Unit cell (cf. http://arxiv.org/abs/1406.1078)."""
-    def __init__(self, num_units, rec_gate_init=-1.0):
-        tf.nn.rnn_cell.RNNCell.__init__(self)
-        self._num_units = num_units
+# Use TensorFlow 1.x style GRUCell instead of Keras version
+from tensorflow.python.ops.rnn_cell import GRUCell as TF1GRUCell
+
+class GRUCell(TF1GRUCell):
+    def __init__(self, num_units, rec_gate_init=None, **kwargs):
         self.rec_gate_init = rec_gate_init
-    @property
-    def state_size(self):
-        return self._num_units
-    @property
-    def output_size(self):
-        return self._num_units
-    def call(self, inputs, state):
-        """Gated recurrent unit (GRU) with nunits cells."""
-        x, new = inputs
-        h = state
-        h *= (1.0 - new)
-        hx = tf.concat([h, x], axis=1)
-        mr = tf.sigmoid(fc(hx, nh=self._num_units * 2, scope='mr', init_bias=self.rec_gate_init))
-        # r: read strength. m: 'member strength
-        m, r = tf.split(mr, 2, axis=1)
-        rh_x = tf.concat([r * h, x], axis=1)
-        htil = tf.tanh(fc(rh_x, nh=self._num_units, scope='htil'))
-        h = m * h + (1.0 - m) * htil
-        return h, h
+        # TF1 GRUCell uses different parameter names
+        if rec_gate_init is not None:
+            from tensorflow.python.ops import init_ops
+            kwargs['kernel_initializer'] = init_ops.constant_initializer(rec_gate_init)
+        super(GRUCell, self).__init__(num_units, **kwargs)
 
 class CnnGruPolicy(StochasticPolicy):
     def __init__(self, scope, ob_space, ac_space,
@@ -130,7 +118,7 @@ class CnnGruPolicy(StochasticPolicy):
             X = activ(fc(X, 'fc1', nh=hidsize, init_scale=np.sqrt(2)))
             X = tf.reshape(X, [sy_nenvs, sy_nsteps, hidsize])
             X, snext = tf.nn.dynamic_rnn(
-                GRUCell(memsize, rec_gate_init=rec_gate_init), (X, ph_new[:,:,None]),
+                GRUCell(memsize, rec_gate_init=rec_gate_init), X,
                 dtype=tf.float32, time_major=False, initial_state=ph_istate)
             X = tf.reshape(X, (-1, memsize))
             Xtout = X

@@ -5,7 +5,8 @@ Helpers for scripts like run_atari.py.
 import os
 
 import gym
-from gym.wrappers import FlattenDictWrapper
+from gym.wrappers import FlattenObservation
+
 from mpi4py import MPI
 from baselines import logger
 from monitor import Monitor

@@ -1,5 +1,6 @@
 import numpy as np
-import tensorflow as tf  # pylint: ignore-module
+import tensorflow.compat.v1 as tf  # pylint: ignore-module
+tf.disable_v2_behavior()
 import copy
 import os
 import functools
@@ -52,11 +53,11 @@ def make_session(num_cpu=None, make_default=False, graph=None):
     """Returns a session that will use <num_cpu> CPU's only"""
     if num_cpu is None:
         num_cpu = int(os.getenv('RCALL_NUM_CPU', multiprocessing.cpu_count()))
-    tf_config = tf.ConfigProto(
+    tf_config = tf.compat.v1.ConfigProto(
         inter_op_parallelism_threads=num_cpu,
         intra_op_parallelism_threads=num_cpu)
     if make_default:
-        return tf.InteractiveSession(config=tf_config, graph=graph)
+        return tf.compat.v1.InteractiveSession(config=tf_config, graph=graph)
     else:
         return tf.Session(config=tf_config, graph=graph)
 

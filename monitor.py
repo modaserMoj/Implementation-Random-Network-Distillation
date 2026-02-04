@@ -76,6 +76,8 @@ class Monitor(Wrapper):
             if "episode" not in info:
                 info["episoide"] = {}
             info['episode'].update(epinfo)
+            # Auto-reset for vectorized environments
+            ob = self.reset()
         self.total_steps += 1
         return (ob, rew, done, info)
 

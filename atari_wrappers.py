@@ -199,7 +199,7 @@ class AddRandomStateToInfo(gym.Wrapper):
 
 def make_atari(env_id, max_episode_steps=4500):
     env = gym.make(env_id)
-    env._max_episode_steps = max_episode_steps*4
+    env._max_episode_steps = max_episode_steps * 4
     assert 'NoFrameskip' in env.spec.id
     env = StickyActionEnv(env)
     env = MaxAndSkipEnv(env, skip=4)

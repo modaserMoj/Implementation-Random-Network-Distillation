@@ -1,5 +1,6 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import random
 from mpi_util import mpi_moments
 
@@ -73,12 +74,10 @@ def tile_images(array, n_cols=None, max_images=None, div=1):
 
 def set_global_seeds(i):
     try:
-        import tensorflow as tf
-    except ImportError:
-        pass
-    else:
         from mpi4py import MPI
-        tf.set_random_seed(i)
+        tf.random.set_seed(i)
+    except:
+        pass
     np.random.seed(i)
     random.seed(i)
 

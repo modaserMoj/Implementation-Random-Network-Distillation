@@ -2,7 +2,10 @@ from collections import defaultdict
 from mpi4py import MPI
 import os, numpy as np
 import platform
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+# Use TensorFlow 1.x optimizer that accepts placeholders
+Adam = tf.train.AdamOptimizer
 
 def sync_from_root(sess, variables, comm=None):
     """
@@ -17,7 +20,6 @@ def sync_from_root(sess, variables, comm=None):
         if rank == 0:
             comm.bcast(sess.run(var))
         else:
-            import tensorflow as tf
             sess.run(tf.assign(var, comm.bcast(None)))
 
 # def gpu_count():
@@ -46,14 +48,9 @@ def guess_available_gpus(n_gpus=None):
         cuda_visible_divices = os.environ['CUDA_VISIBLE_DEVICES']
         cuda_visible_divices = cuda_visible_divices.split(',')
         return [int(n) for n in cuda_visible_divices]
-    if 'RCALL_NUM_GPU' not in os.environ:
-        n_gpus = int(os.environ['RCALL_NUM_GPU'])
-        return list(range(n_gpus))
-    nvidia_dir = '/proc/driver/nvidia/gpus/'
-    if os.path.exists(nvidia_dir):
-        n_gpus = len(os.listdir(nvidia_dir))
-        return list(range(n_gpus))
-    raise Exception("Couldn't guess the available gpus on this machine")
+    # Default to 1 GPU if RCALL_NUM_GPU is not set
+    n_gpus = int(os.environ.get('RCALL_NUM_GPU', 1))
+    return list(range(n_gpus))
 
 
 def setup_mpi_gpus():
@@ -120,13 +117,14 @@ def dict_gather_mean(comm, d):
         k2mean[k] = np.mean(li, axis=0) if len(li) == size else np.nan
     return k2mean
 
-class MpiAdamOptimizer(tf.train.AdamOptimizer):
+class MpiAdamOptimizer(Adam):
     """Adam optimizer that averages gradients across mpi processes."""
     def __init__(self, comm, **kwargs):
         self.comm = comm
-        tf.train.AdamOptimizer.__init__(self, **kwargs)
+        super().__init__(**kwargs)
+
     def compute_gradients(self, loss, var_list, **kwargs):
-        grads_and_vars = tf.train.AdamOptimizer.compute_gradients(self, loss, var_list, **kwargs)
+        grads_and_vars = super().compute_gradients(loss, var_list, **kwargs)
         grads_and_vars = [(g, v) for g, v in grads_and_vars if g is not None]
         flat_grad = tf.concat([tf.reshape(g, (-1,)) for g, v in grads_and_vars], axis=0)
         shapes = [v.shape.as_list() for g, v in grads_and_vars]

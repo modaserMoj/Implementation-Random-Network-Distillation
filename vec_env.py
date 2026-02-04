@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
 from baselines import logger
 from utils import tile_images
+from gym import spaces
 
 class AlreadySteppingError(Exception):
     """
@@ -164,20 +165,6 @@ class VecFrameStack(VecEnvWrapper):
 
     def close(self):
         self.venv.close()
-
-
-class VecFrameStack(VecEnvWrapper):
-    """
-    Vectorized environment base class
-    """
-    def __init__(self, venv, nstack):
-        self.venv = venv
-        self.nstack = nstack
-        wos = venv.observation_space # wrapped ob space
-        low = np.repeat(wos.low, self.nstack, axis=-1)
-        high = np.repeat(wos.high, self.nstack, axis=-1)
-        self.stackedobs = np.zeros((venv.num_envs,)+low.shape, low.dtype)
-        observation_space = spaces.Box(low=low, high=high, dtype=venv.observation_space.dtype)
         VecEnvWrapper.__init__(self, venv, observation_space=observation_space)
 
     def step_wait(self):
@@ -207,27 +194,25 @@ class VecFrameStack(VecEnvWrapper):
 
 def worker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
-    env = env_fn_wrapper.x()
-    while True:
-        cmd, data = remote.recv()
-        if cmd == 'step':
-            ob, reward, done, info = env.step(data)
-            if done:
-                ob = env.reset()
-            remote.send((ob, reward, done, info))
-        elif cmd == 'reset':
-            ob = env.reset()
-            remote.send(ob)
-        elif cmd == 'render':
-            remote.send(env.render(mode='rgb_array'))
-        elif cmd == 'close':
-            remote.close()
-            break
-        elif cmd == 'get_spaces':
-            remote.send((env.observation_space, env.action_space))
-        else:
-            raise NotImplementedError
-
+    try:
+        env = env_fn_wrapper.x()
+        while True:
+            cmd, data = remote.recv()
+            if cmd == 'step':
+                remote.send(env.step(data))
+            elif cmd == 'reset':
+                remote.send(env.reset())
+            elif cmd == 'close':
+                remote.close()
+                break
+            elif cmd == 'get_spaces':
+                remote.send((env.observation_space, env.action_space))
+            else:
+                raise NotImplementedError
+    except Exception as e:
+        import traceback
+        remote.send(("error", traceback.format_exc()))
+        remote.close()
 
 class SubprocVecEnv(VecEnv):
     def __init__(self, env_fns, spaces=None):
@@ -247,7 +232,14 @@ class SubprocVecEnv(VecEnv):
             remote.close()
 
         self.remotes[0].send(('get_spaces', None))
-        observation_space, action_space = self.remotes[0].recv()
+        result = self.remotes[0].recv()
+        print(f"SubprocVecEnv received: {result}")
+        if isinstance(result, tuple) and len(result) == 2 and result[0] == 'error':
+            print(f"Error in subprocess worker:\n{result[1]}")
+            raise RuntimeError(f"Error in subprocess worker:\n{result[1]}")
+        observation_space, action_space = result
+        print(f"observation_space type={type(observation_space)}, value={observation_space}")
+        print(f"action_space type={type(action_space)}, value={action_space}")
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
 
     def step_async(self, actions):
@@ -258,6 +250,10 @@ class SubprocVecEnv(VecEnv):
     def step_wait(self):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
+        # Check for errors from subprocesses
+        for result in results:
+            if isinstance(result, tuple) and len(result) == 2 and result[0] == 'error':
+                raise RuntimeError(f"Error in subprocess worker:\n{result[1]}")
         obs, rews, dones, infos = zip(*results)
         return np.stack(obs), np.stack(rews), np.stack(dones), infos
 
