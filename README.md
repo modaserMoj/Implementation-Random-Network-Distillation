@@ -1,29 +1,31 @@
 **Status:** Archive (code is provided as-is, no updates expected)
 
-## [Exploration by Random Network Distillation](https://arxiv.org/abs/1810.12894) ##
-
+## [Exploration by Random Network Distillation](https://arxiv.org/abs/1810.12894)
 
 Yuri Burda*, Harri Edwards*, Amos Storkey, Oleg Klimov<br/>
-&#42;equal contribution
+\*equal contribution
 
 OpenAI<br/>
 University of Edinburgh
 
-
 ### Installation and Setup
 
 #### 1. Create Virtual Environment
+
 ```bash
 python -m venv env
 ```
 
 #### 2. Activate Virtual Environment
+
 **Windows:**
+
 ```bash
 env\Scripts\activate
 ```
 
 **Linux/Mac:**
+
 ```bash
 source env/bin/activate
 ```
@@ -31,6 +33,7 @@ source env/bin/activate
 #### 3. Install Dependencies
 
 **Option A: Using requirements.txt**
+
 ```bash
 pip install -r requirements.txt
 pip install autorom[accept-rom-license]==0.6.1
@@ -38,6 +41,7 @@ pip install git+https://github.com/openai/baselines.git@master
 ```
 
 **Option B: Manual installation**
+
 ```bash
 # Core ML libraries
 pip install tensorflow==2.18.0
@@ -58,11 +62,13 @@ pip install git+https://github.com/openai/baselines.git@master
 ### Usage
 
 #### Train on Montezuma's Revenge (default)
+
 ```bash
 python run_atari.py --gamma_ext 0.999
 ```
 
 #### Train with Custom Parameters
+
 ```bash
 # Quick test (100K timesteps, ~10 minutes)
 python run_atari.py --gamma_ext 0.999 --num-timesteps 100000
@@ -75,19 +81,23 @@ python run_atari.py --env PongNoFrameskip-v4 --gamma_ext 0.999 --num-timesteps 1
 ```
 
 #### Multi-GPU/Multi-Machine Training
+
 To use more than one gpu/machine, use MPI:
+
 ```bash
 # 8 GPUs with 128 environments per GPU (1024 total)
 mpiexec -n 8 python run_atari.py --num_env 128 --gamma_ext 0.999
 ```
 
 ### Key Arguments
+
 - `--num-timesteps`: Total timesteps to train (default: 1 trillion, effectively infinite)
 - `--num_env`: Number of parallel environments (default: 32)
 - `--gamma_ext`: Discount factor for extrinsic rewards (default: 0.99, paper uses 0.999)
 - `--env`: Environment name (default: MontezumaRevengeNoFrameskip-v4)
 
 ### What to Expect
+
 - The agent will start exploring and discovering rooms driven by curiosity (RND intrinsic rewards)
 - Episode rewards (`eprew`) will be 0 initially - this is normal for hard exploration games
 - Watch `n_rooms` to see exploration progress
