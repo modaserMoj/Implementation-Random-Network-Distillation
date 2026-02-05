@@ -30,16 +30,12 @@ class MaxAndSkipEnv(gym.Wrapper):
         total_reward = 0.0
         done = None
         info = {}
-        return_5_values = False
-        terminated = False
-        truncated = False
-        
         for i in range(self._skip):
             result = self.env.step(action)
+            # Handle gym 0.26+ (5 values) vs older gym (4 values)
             if len(result) == 5:
                 obs, reward, terminated, truncated, info = result
                 done = terminated or truncated
-                return_5_values = True
             else:
                 obs, reward, done, info = result
             if i == self._skip - 2: self._obs_buffer[0] = obs
@@ -51,13 +47,14 @@ class MaxAndSkipEnv(gym.Wrapper):
         # doesn't matter
         max_frame = self._obs_buffer.max(axis=0)
 
-        if return_5_values:
-            return max_frame, total_reward, terminated, truncated, info
-        else:
-            return max_frame, total_reward, done, info
+        return max_frame, total_reward, done, info
 
     def reset(self, **kwargs):
-        return self.env.reset(**kwargs)
+        result = self.env.reset(**kwargs)
+        # Handle gym 0.26+ which returns (obs, info) vs older gym which returns obs
+        if isinstance(result, tuple) and len(result) == 2:
+            return result[0]
+        return result
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -98,7 +95,12 @@ class FrameStack(gym.Wrapper):
         self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8)
 
     def reset(self):
-        ob = self.env.reset()
+        result = self.env.reset()
+        # Handle gym 0.26+ which returns (obs, info) vs older gym which returns obs
+        if isinstance(result, tuple) and len(result) == 2:
+            ob = result[0]
+        else:
+            ob = result
         for _ in range(self.k):
             self.frames.append(ob)
         return self._get_ob()
@@ -164,25 +166,19 @@ class MontezumaInfoWrapper(gym.Wrapper):
 
     def step(self, action):
         result = self.env.step(action)
+        # Handle gym 0.26+ (5 values) vs older gym (4 values)
         if len(result) == 5:
             obs, rew, terminated, truncated, info = result
             done = terminated or truncated
-            return_5_values = True
         else:
             obs, rew, done, info = result
-            terminated = done
-            truncated = False
-            return_5_values = False
         self.visited_rooms.add(self.get_current_room())
         if done:
             if 'episode' not in info:
                 info['episode'] = {}
             info['episode'].update(visited_rooms=copy(self.visited_rooms))
             self.visited_rooms.clear()
-        if return_5_values:
-            return obs, rew, terminated, truncated, info
-        else:
-            return obs, rew, done, info
+        return obs, rew, done, info
 
     def reset(self):
         return self.env.reset()
@@ -212,23 +208,17 @@ class AddRandomStateToInfo(gym.Wrapper):
 
     def step(self, action):
         result = self.env.step(action)
+        # Handle gym 0.26+ (5 values) vs older gym (4 values)
         if len(result) == 5:
             ob, r, terminated, truncated, info = result
             d = terminated or truncated
-            return_5_values = True
         else:
             ob, r, d, info = result
-            terminated = d
-            truncated = False
-            return_5_values = False
         if d:
             if 'episode' not in info:
                 info['episode'] = {}
             info['episode']['rng_at_episode_start'] = self.rng_at_episode_start
-        if return_5_values:
-            return ob, r, terminated, truncated, info
-        else:
-            return ob, r, d, info
+        return ob, r, d, info
 
     def reset(self, **kwargs):
         self.rng_at_episode_start = copy(self.unwrapped.np_random)
@@ -277,9 +267,10 @@ class StickyActionEnv(gym.Wrapper):
             action = self.last_action
         self.last_action = action
         result = self.env.step(action)
+        # Handle gym 0.26+ (5 values) vs older gym (4 values)
         if len(result) == 5:
             obs, reward, terminated, truncated, info = result
-            return obs, reward, terminated, truncated, info
-        else:
-            obs, reward, done, info = result
+            done = terminated or truncated
             return obs, reward, done, info
+        else:
+            return result

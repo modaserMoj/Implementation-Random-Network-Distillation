@@ -200,7 +200,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             cmd, data = remote.recv()
             if cmd == 'step':
                 result = env.step(data)
-                # Handle gym 0.26+ which returns (obs, reward, terminated, truncated, info)
+                # Handle gym 0.26+ (5 values) vs older gym (4 values)
                 if len(result) == 5:
                     obs, reward, terminated, truncated, info = result
                     done = terminated or truncated
@@ -209,8 +209,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
                     remote.send(result)
             elif cmd == 'reset':
                 result = env.reset()
-                # Handle gym 0.26+ which returns (obs, info) instead of just obs
-                if isinstance(result, tuple):
+                # Handle gym 0.26+ which returns (obs, info) vs older gym which returns obs
+                if isinstance(result, tuple) and len(result) == 2:
                     remote.send(result[0])  # Just send observation
                 else:
                     remote.send(result)
