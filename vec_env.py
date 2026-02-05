@@ -201,7 +201,12 @@ def worker(remote, parent_remote, env_fn_wrapper):
             if cmd == 'step':
                 remote.send(env.step(data))
             elif cmd == 'reset':
-                remote.send(env.reset())
+                result = env.reset()
+                # Handle gym 0.26+ which returns (obs, info) instead of just obs
+                if isinstance(result, tuple):
+                    remote.send(result[0])  # Just send observation
+                else:
+                    remote.send(result)
             elif cmd == 'close':
                 remote.close()
                 break
