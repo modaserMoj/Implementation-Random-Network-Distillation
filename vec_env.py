@@ -199,7 +199,14 @@ def worker(remote, parent_remote, env_fn_wrapper):
         while True:
             cmd, data = remote.recv()
             if cmd == 'step':
-                remote.send(env.step(data))
+                result = env.step(data)
+                # Handle gym 0.26+ which returns (obs, reward, terminated, truncated, info)
+                if len(result) == 5:
+                    obs, reward, terminated, truncated, info = result
+                    done = terminated or truncated
+                    remote.send((obs, reward, done, info))
+                else:
+                    remote.send(result)
             elif cmd == 'reset':
                 result = env.reset()
                 # Handle gym 0.26+ which returns (obs, info) instead of just obs
