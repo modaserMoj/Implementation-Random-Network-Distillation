@@ -58,11 +58,18 @@ class Monitor(Wrapper):
         if self.needs_reset:
             raise RuntimeError("Tried to step environment that needs reset")
         result = self.env.step(action)
+        
+        # Handle both gym 0.26+ (5 values) and older gym (4 values)
         if len(result) == 5:
             ob, rew, terminated, truncated, info = result
             done = terminated or truncated
+            return_5_values = True
         else:
             ob, rew, done, info = result
+            terminated = done
+            truncated = False
+            return_5_values = False
+            
         self.rewards.append(rew)
         if done:
             self.needs_reset = True
@@ -82,9 +89,21 @@ class Monitor(Wrapper):
                 info["episoide"] = {}
             info['episode'].update(epinfo)
             # Auto-reset for vectorized environments
-            ob = self.reset()
+            reset_result = self.reset()
+            # Handle gym 0.26+ reset which returns (obs, info)
+            if isinstance(reset_result, tuple):
+                ob = reset_result[0]
+            else:
+                ob = reset_result
         self.total_steps += 1
-        return (ob, rew, done, info)
+        
+        # Return in the same format as input
+        if return_5_values:
+            # For gym 0.26+: return (obs, reward, terminated, truncated, info)
+            return (ob, rew, terminated, truncated, info)
+        else:
+            # For older gym: return (obs, reward, done, info)
+            return (ob, rew, done, info)
 
     def close(self):
         if self.f is not None:

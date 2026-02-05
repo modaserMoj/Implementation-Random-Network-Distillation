@@ -8,7 +8,7 @@ mpi4py==4.0.1
 ale-py==0.8.1
 
 # Additional dependencies
-numpy>=1.19.0
+numpy>=1.19.0,<2.0
 scipy>=1.5.0
 
 # Note: OpenAI Baselines must be installed separately:

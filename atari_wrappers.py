@@ -30,11 +30,16 @@ class MaxAndSkipEnv(gym.Wrapper):
         total_reward = 0.0
         done = None
         info = {}
+        return_5_values = False
+        terminated = False
+        truncated = False
+        
         for i in range(self._skip):
             result = self.env.step(action)
             if len(result) == 5:
                 obs, reward, terminated, truncated, info = result
                 done = terminated or truncated
+                return_5_values = True
             else:
                 obs, reward, done, info = result
             if i == self._skip - 2: self._obs_buffer[0] = obs
@@ -46,7 +51,10 @@ class MaxAndSkipEnv(gym.Wrapper):
         # doesn't matter
         max_frame = self._obs_buffer.max(axis=0)
 
-        return max_frame, total_reward, done, info
+        if return_5_values:
+            return max_frame, total_reward, terminated, truncated, info
+        else:
+            return max_frame, total_reward, done, info
 
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
@@ -159,15 +167,22 @@ class MontezumaInfoWrapper(gym.Wrapper):
         if len(result) == 5:
             obs, rew, terminated, truncated, info = result
             done = terminated or truncated
+            return_5_values = True
         else:
             obs, rew, done, info = result
+            terminated = done
+            truncated = False
+            return_5_values = False
         self.visited_rooms.add(self.get_current_room())
         if done:
             if 'episode' not in info:
                 info['episode'] = {}
             info['episode'].update(visited_rooms=copy(self.visited_rooms))
             self.visited_rooms.clear()
-        return obs, rew, done, info
+        if return_5_values:
+            return obs, rew, terminated, truncated, info
+        else:
+            return obs, rew, done, info
 
     def reset(self):
         return self.env.reset()
@@ -200,13 +215,20 @@ class AddRandomStateToInfo(gym.Wrapper):
         if len(result) == 5:
             ob, r, terminated, truncated, info = result
             d = terminated or truncated
+            return_5_values = True
         else:
             ob, r, d, info = result
+            terminated = d
+            truncated = False
+            return_5_values = False
         if d:
             if 'episode' not in info:
                 info['episode'] = {}
             info['episode']['rng_at_episode_start'] = self.rng_at_episode_start
-        return ob, r, d, info
+        if return_5_values:
+            return ob, r, terminated, truncated, info
+        else:
+            return ob, r, d, info
 
     def reset(self, **kwargs):
         self.rng_at_episode_start = copy(self.unwrapped.np_random)
@@ -257,7 +279,7 @@ class StickyActionEnv(gym.Wrapper):
         result = self.env.step(action)
         if len(result) == 5:
             obs, reward, terminated, truncated, info = result
-            done = terminated or truncated
+            return obs, reward, terminated, truncated, info
         else:
             obs, reward, done, info = result
-        return obs, reward, done, info
+            return obs, reward, done, info
