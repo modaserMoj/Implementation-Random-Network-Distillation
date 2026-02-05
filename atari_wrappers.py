@@ -29,8 +29,14 @@ class MaxAndSkipEnv(gym.Wrapper):
         """Repeat action, sum reward, and max over last observations."""
         total_reward = 0.0
         done = None
+        info = {}
         for i in range(self._skip):
-            obs, reward, done, info = self.env.step(action)
+            result = self.env.step(action)
+            if len(result) == 5:
+                obs, reward, terminated, truncated, info = result
+                done = terminated or truncated
+            else:
+                obs, reward, done, info = result
             if i == self._skip - 2: self._obs_buffer[0] = obs
             if i == self._skip - 1: self._obs_buffer[1] = obs
             total_reward += reward
@@ -149,7 +155,12 @@ class MontezumaInfoWrapper(gym.Wrapper):
         return int(ram[self.room_address])
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
+        result = self.env.step(action)
+        if len(result) == 5:
+            obs, rew, terminated, truncated, info = result
+            done = terminated or truncated
+        else:
+            obs, rew, done, info = result
         self.visited_rooms.add(self.get_current_room())
         if done:
             if 'episode' not in info:
@@ -185,7 +196,12 @@ class AddRandomStateToInfo(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
 
     def step(self, action):
-        ob, r, d, info = self.env.step(action)
+        result = self.env.step(action)
+        if len(result) == 5:
+            ob, r, terminated, truncated, info = result
+            d = terminated or truncated
+        else:
+            ob, r, d, info = result
         if d:
             if 'episode' not in info:
                 info['episode'] = {}
@@ -238,5 +254,10 @@ class StickyActionEnv(gym.Wrapper):
         if self.unwrapped.np_random.uniform() < self.p:
             action = self.last_action
         self.last_action = action
-        obs, reward, done, info = self.env.step(action)
+        result = self.env.step(action)
+        if len(result) == 5:
+            obs, reward, terminated, truncated, info = result
+            done = terminated or truncated
+        else:
+            obs, reward, done, info = result
         return obs, reward, done, info
