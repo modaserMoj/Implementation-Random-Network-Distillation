@@ -504,8 +504,8 @@ class PpoAgent(object):
 
             #Applying our supposed improved if on: i_t' = i_t * sigmoid(V_ext(s_t))
             if self.goal_weight:
-                vpreds_ext_for_weight = self.I.buf_vpreds_ext  # shape: (nenvs, nsteps)
-                sigmoid_weight = 1.0 / (1.0 + np.exp(-vpreds_ext_for_weight))
+                sigmoid_weight = 1.0 / (1.0 + np.exp(-self.I.buf_vpreds_ext))
+                sigmoid_weight = np.maximum(0.5, sigmoid_weight)  # Never suppress below 50%
                 self.I.buf_rews_int[:] = self.I.buf_rews_int * sigmoid_weight
 
             if not self.update_ob_stats_every_step:
