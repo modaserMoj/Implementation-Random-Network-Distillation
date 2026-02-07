@@ -71,6 +71,7 @@ def train(*, env_id, num_env, hps, num_timesteps, seed):
         update_ob_stats_every_step=hps.pop('update_ob_stats_every_step'),
         int_coeff=hps.pop('int_coeff'),
         ext_coeff=hps.pop('ext_coeff'),
+        goal_weight=hps.pop('goal_weight'),
     )
     agent.start_interaction([venv])
     if hps.pop('update_ob_stats_from_random_agent'):
@@ -114,6 +115,7 @@ def main():
     parser.add_argument('--int_coeff', type=float, default=1.)
     parser.add_argument('--ext_coeff', type=float, default=2.)
     parser.add_argument('--dynamics_bonus', type=int, default=0)
+    parser.add_argument('--goal_weight', type=int, default=0, help='Enable goal-oriented weighted intrinsic reward: i_t * sigmoid(V_ext(s_t))')
 
 
     args = parser.parse_args()
@@ -146,7 +148,8 @@ def main():
         policy=args.policy,
         int_coeff=args.int_coeff,
         ext_coeff=args.ext_coeff,
-        dynamics_bonus = args.dynamics_bonus
+        dynamics_bonus = args.dynamics_bonus,
+        goal_weight=args.goal_weight
     )
 
     tf_util.make_session(make_default=True)

@@ -119,10 +119,12 @@ class PpoAgent(object):
                  update_ob_stats_every_step=True,
                  int_coeff=None,
                  ext_coeff=None,
+                 goal_weight=0,
                  ):
         self.lr = lr
         self.ext_coeff = ext_coeff
         self.int_coeff = int_coeff
+        self.goal_weight = goal_weight
         self.use_news = use_news
         self.update_ob_stats_every_step = update_ob_stats_every_step
         self.abs_scope = (tf.get_variable_scope().name + '/' + scope).lstrip('/')
@@ -323,6 +325,7 @@ class PpoAgent(object):
             vpredextstd  = self.I.buf_vpreds_ext.std(), # previously not there
             ev_int = np.clip(explained_variance(self.I.buf_vpreds_int.ravel(), rets_int.ravel()), -1, None),
             ev_ext = np.clip(explained_variance(self.I.buf_vpreds_ext.ravel(), rets_ext.ravel()), -1, None),
+            goal_weight_active = self.goal_weight,
             rooms = SemicolonList(self.rooms),
             n_rooms = len(self.rooms),
             best_ret = self.best_ret,
@@ -498,6 +501,12 @@ class PpoAgent(object):
                        self.stochpol.ph_std: self.stochpol.ob_rms.var ** 0.5})
             fd[self.stochpol.ph_ac] = self.I.buf_acs
             self.I.buf_rews_int[:] = tf.get_default_session().run(self.stochpol.int_rew, fd)
+
+            #Applying our supposed improved if on: i_t' = i_t * sigmoid(V_ext(s_t))
+            if self.goal_weight:
+                vpreds_ext_for_weight = self.I.buf_vpreds_ext  # shape: (nenvs, nsteps)
+                sigmoid_weight = 1.0 / (1.0 + np.exp(-vpreds_ext_for_weight))
+                self.I.buf_rews_int[:] = self.I.buf_rews_int * sigmoid_weight
 
             if not self.update_ob_stats_every_step:
                 #Update observation normalization parameters after the rollout is completed.
