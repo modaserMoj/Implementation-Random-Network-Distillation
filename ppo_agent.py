@@ -503,8 +503,7 @@ class PpoAgent(object):
             self.I.buf_rews_int[:] = tf.get_default_session().run(self.stochpol.int_rew, fd)
 
             #Applying our supposed improved if on: i_t' = i_t * sigmoid(V_ext(s_t))
-            #With 4M step warmup period for pure exploration first
-            if self.goal_weight and self.I.stats['tcount'] > 4000000:
+            if self.goal_weight:
                 sigmoid_weight = 1.0 / (1.0 + np.exp(-self.I.buf_vpreds_ext))
                 self.I.buf_rews_int[:] = self.I.buf_rews_int * sigmoid_weight
 
