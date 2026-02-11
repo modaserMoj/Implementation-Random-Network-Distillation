@@ -130,12 +130,4 @@ With a 4M step warmup period (pure RND exploration first), then goal-weight acti
 
 Enable with `--goal_weight 1`.
 
-### What to Expect
-
-- The agent will start exploring and discovering rooms driven by curiosity (RND intrinsic rewards)
-- Episode rewards (`eprew`) will be 0 initially - this is normal for hard exploration games
-- Watch `n_rooms` to see exploration progress
-- Actual game scores typically appear after millions of timesteps
-- The paper achieved 8,152 score on Montezuma's Revenge after extensive training
-
 ### [Blog post and videos](https://blog.openai.com/reinforcement-learning-with-prediction-based-rewards/)
