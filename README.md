@@ -10,6 +10,8 @@ University of Edinburgh
 
 ### Installation and Setup
 
+**Tested with Python 3.10**
+
 #### 1. Create Virtual Environment
 
 ```bash
@@ -95,6 +97,38 @@ mpiexec -n 8 python run_atari.py --num_env 128 --gamma_ext 0.999
 - `--num_env`: Number of parallel environments (default: 32)
 - `--gamma_ext`: Discount factor for extrinsic rewards (default: 0.99, paper uses 0.999)
 - `--env`: Environment name (default: MontezumaRevengeNoFrameskip-v4)
+- `--proportion_of_exp_used_for_predictor_update`: Fraction of experience for RND predictor training (default: 1.0, paper uses 0.25)
+- `--goal_weight`: Enable goal-oriented weighted intrinsic reward modification (default: 0, set to 1 to enable)
+
+### Example Commands
+
+```bash
+# Baseline RND on Montezuma's Revenge (15M steps)
+python run_atari.py --env MontezumaRevengeNoFrameskip-v4 --num_env 64 --gamma_ext 0.999 --num-timesteps 15000000
+
+# Baseline with paper's predictor proportion setting
+python run_atari.py --env MontezumaRevengeNoFrameskip-v4 --num_env 64 --gamma_ext 0.999 --proportion_of_exp_used_for_predictor_update 0.25 --num-timesteps 15000000
+
+# With goal-weight modification enabled
+python run_atari.py --env MontezumaRevengeNoFrameskip-v4 --num_env 64 --gamma_ext 0.999 --proportion_of_exp_used_for_predictor_update 0.25 --goal_weight 1 --num-timesteps 15000000
+
+# Venture environment
+python run_atari.py --env VentureNoFrameskip-v4 --num_env 64 --gamma_ext 0.999 --num-timesteps 15000000
+```
+
+### Goal-Weight Modification
+
+This fork includes an experimental modification: **Goal-Oriented Weighted Intrinsic Reward**.
+
+The intrinsic reward is weighted by the sigmoid of the extrinsic value estimate:
+
+```
+i_t' = i_t * σ(V_ext(s_t))
+```
+
+With a 4M step warmup period (pure RND exploration first), then goal-weight activates.
+
+Enable with `--goal_weight 1`.
 
 ### What to Expect
 
