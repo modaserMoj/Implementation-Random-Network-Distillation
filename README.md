@@ -55,11 +55,11 @@ pip install mpi4py==4.0.1
 pip install ale-py==0.8.1
 pip install autorom[accept-rom-license]==0.6.1
 
-# OpenAI Baselines (legacy version compatible with gym 0.26)
+# OpenAI Baselines legacy version compatible with gym 0.26
 pip install git+https://github.com/openai/baselines.git@master
 ```
 
-**Note:** This code requires TensorFlow 1.x API compatibility mode which is enabled automatically in the code via `tensorflow.compat.v1`.
+**Note:** This code needs TensorFlow 1.x API compatibility mode which is already enabled in the code using `tensorflow.compat.v1`.
 
 ### Usage
 
@@ -72,10 +72,10 @@ python run_atari.py --gamma_ext 0.999
 #### Train with Custom Parameters
 
 ```bash
-# Quick test (100K timesteps, ~10 minutes)
+# Quick test (about ten minutes)
 python run_atari.py --gamma_ext 0.999 --num-timesteps 100000
 
-# Short training (10M timesteps, ~12 hours)
+# Extensive training
 python run_atari.py --gamma_ext 0.999 --num-timesteps 10000000
 
 # Different game
@@ -118,15 +118,7 @@ python run_atari.py --env VentureNoFrameskip-v4 --num_env 64 --gamma_ext 0.999 -
 
 ### Goal-Weight Modification
 
-This fork includes an experimental modification: **Goal-Oriented Weighted Intrinsic Reward**.
-
-The intrinsic reward is weighted by the sigmoid of the extrinsic value estimate:
-
-```
-i_t' = i_t * σ(V_ext(s_t))
-```
-
-With a 4M step warmup period (pure RND exploration first), then goal-weight activates.
+This fork includes an experimental modification: **Goal Weighted Intrinsic Reward**.
 
 Enable with `--goal_weight 1`.
 
